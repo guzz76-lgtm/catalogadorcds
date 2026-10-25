@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catalogador de Discos Pro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(51, 65, 85, 0.8);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.6);
+        }
+        
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+
+        .glow-indigo {
+            box-shadow: 0 0 30px -5px rgba(99, 102, 241, 0.3);
+        }
+
+        .glow-cyan {
+            box-shadow: 0 0 20px -3px rgba(6, 182, 212, 0.25);
+        }
+
+        .gradient-border {
+            border: 1px solid transparent;
+            background: linear-gradient(135deg, #1e293b, #0f172a) padding-box,
+                        linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(168, 85, 247, 0.1)) border-box;
+        }
+
+        .tree-line {
+            position: relative;
+        }
+        .tree-line::before {
+            content: '';
+            position: absolute;
+            left: 14px;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: rgba(51, 65, 85, 0.4);
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans overflow-hidden antialiased select-none bg-slate-950 text-slate-200">
+
+    <!-- Top App Navigation Bar -->
+    <header class="h-16 border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md px-6 flex items-center justify-between flex-shrink-0 z-20">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-violet-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25">
+                <i class="fa-solid fa-compact-disc text-xl animate-spin-slow"></i>
+            </div>
+            <div>
+                <h1 class="font-extrabold text-base tracking-tight text-white flex items-center gap-2">
+                    Catalogador de Discos
+                    <span class="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase tracking-wider">Pro v2.6</span>
+                </h1>
+                <p class="text-xs text-slate-400">Gestión física y exploración multimedia offline</p>
+            </div>
+        </div>
+
+        <!-- System Action Buttons -->
+        <div class="flex items-center gap-3">
+            <label id="import-btn-label" for="import-json" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-xs font-semibold text-slate-300 hover:text-white cursor-pointer transition-all flex items-center gap-2 shadow-sm">
+                <i class="fa-solid fa-file-import text-indigo-400"></i>
+                <span>Importar JSON</span>
+            </label>
+            <input type="file" id="import-json" accept=".json" class="hidden">
+
+            <button id="export-json" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-xs font-semibold text-slate-300 hover:text-white transition-all flex items-center gap-2 shadow-sm">
+                <i class="fa-solid fa-file-export text-emerald-400"></i>
+                <span>Exportar Respaldo</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Workspace -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar / Disc List Panel -->
+        <aside class="w-80 bg-slate-900/40 border-r border-slate-800/80 flex flex-col flex-shrink-0 z-10">
+            <!-- Search & Filter Controls -->
+            <div class="p-3.5 border-b border-slate-800/80 space-y-3 bg-slate-900/60 backdrop-blur-sm">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-2.5 text-xs text-slate-500"></i>
+                    <input type="text" id="search-input" placeholder="Buscar título, fichero, ID..." class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/30 transition-all font-sans">
+                </div>
+                <div class="flex items-center justify-between">
+                    <span id="search-count" class="text-[11px] font-semibold font-mono text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-lg border border-indigo-500/20">0 Discos</span>
+                    <button id="add-disc-btn" class="px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-indigo-600/25 active:scale-95">
+                        <i class="fa-solid fa-plus text-xs"></i> Registrar Disco
+                    </button>
+                </div>
+            </div>
+
+            <!-- List of Discs -->
+            <div id="disc-list" class="flex-1 overflow-y-auto p-2.5 space-y-2">
+                <!-- Cards render dynamically -->
+            </div>
+        </aside>
+
+        <!-- Main Workspace (Selected Disc View & File Explorer) -->
+        <main class="flex-1 flex flex-col bg-slate-950 overflow-hidden">
+            
+            <!-- Selected Disc Detailed Header -->
+            <div id="disc-detail-header" class="bg-slate-900/60 border-b border-slate-800 p-4 px-6 flex items-center justify-between hidden shadow-sm">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-inner">
+                        <i class="fa-solid fa-compact-disc text-2xl"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <!-- 1. Fichero Primero -->
+                            <span id="view-fichero" class="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-indigo-300 font-mono font-bold border border-slate-700/80 shadow-sm">--</span>
+                            <!-- 2. ID Disco Segundo -->
+                            <span id="view-code" class="text-xs px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-mono font-bold border border-indigo-500/30">--</span>
+                            <h2 id="view-title" class="text-base font-extrabold text-white tracking-tight ml-1"></h2>
+                        </div>
+                        <p id="view-meta" class="text-xs text-slate-400 mt-1 font-medium"></p>
+                    </div>
+                </div>
+                
+                <!-- Disc Actions (Edit & Delete) -->
+                <div class="flex items-center gap-2">
+                    <button id="edit-disc-btn" class="px-3.5 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 text-xs font-semibold rounded-xl border border-indigo-500/20 transition-all flex items-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-pen-to-square"></i> Editar Disco
+                    </button>
+                    <button id="delete-disc-btn" class="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 text-xs font-semibold rounded-xl border border-rose-500/20 transition-all flex items-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-trash-can"></i> Eliminar Disco
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content Split Screen (Tree Explorer & Multi-Format Previewer) -->
+            <div class="flex-1 flex overflow-hidden">
+                
+                <!-- Left Pane: Folder & File Structure -->
+                <div class="w-1/2 border-r border-slate-800/80 flex flex-col bg-slate-900/20">
+                    <div class="px-4 py-3 bg-slate-900/60 border-b border-slate-800/80 flex items-center justify-between text-xs text-slate-400 font-bold uppercase tracking-wider">
+                        <span class="flex items-center gap-2 text-slate-300">
+                            <i class="fa-solid fa-sitemap text-indigo-400"></i> Estructura de Archivos
+                        </span>
+                        <span id="file-count-badge" class="text-[10px] bg-slate-800 px-2.5 py-0.5 rounded-full text-slate-300 font-mono border border-slate-700">0 elementos</span>
+                    </div>
+                    <div id="tree-container" class="flex-1 overflow-y-auto p-3 text-sm font-mono">
+                        <div class="h-full flex flex-col items-center justify-center text-slate-500 space-y-2">
+                            <i class="fa-solid fa-folder-open text-3xl text-slate-700"></i>
+                            <p class="text-xs font-sans">Selecciona un disco de la lista lateral</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Pane: File Previewer -->
+                <div class="w-1/2 flex flex-col bg-slate-950">
+                    <div class="px-4 py-3 bg-slate-900/60 border-b border-slate-800/80 flex items-center justify-between text-xs text-slate-400 font-bold uppercase tracking-wider">
+                        <span id="preview-title-bar" class="flex items-center gap-2 text-slate-300">
+                            <i class="fa-solid fa-eye text-indigo-400"></i> Previsualizador
+                        </span>
+                        <span id="preview-type-badge" class="text-[10px] bg-indigo-500/10 text-indigo-300 px-2.5 py-0.5 rounded border border-indigo-500/20 font-mono hidden">--</span>
+                    </div>
+                    <div id="preview-body" class="flex-1 p-6 overflow-y-auto flex items-center justify-center">
+                        <div class="text-center space-y-3 text-slate-500">
+                            <div class="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-slate-700">
+                                <i class="fa-regular fa-file-video text-3xl"></i>
+                            </div>
+                            <p class="text-xs font-sans">Selecciona un archivo para previsualizar</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+    </div>
+
+    <!-- Modal Form: Add / Edit Disc -->
+    <div id="add-disc-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] glow-indigo">
+            <div class="px-6 py-4 bg-slate-800/60 border-b border-slate-800 flex items-center justify-between">
+                <h3 id="modal-title" class="font-bold text-white flex items-center gap-2.5">
+                    <i class="fa-solid fa-compact-disc text-indigo-400"></i>
+                    Registrar Nuevo Disco
+                </h3>
+                <button id="close-modal-btn" class="text-slate-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <form id="add-disc-form" class="p-6 space-y-4 overflow-y-auto">
+                <!-- Inputs: 1. Fichero Primero, 2. Disco Segundo -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">1. Nº Fichero / Archivero *</label>
+                        <input type="text" id="disc-fichero" required placeholder="Ej: FIC-01" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">2. Nº de Disco / ID *</label>
+                        <input type="text" id="disc-code" required placeholder="Ej: CD-001" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Título del Disco *</label>
+                    <input type="text" id="disc-title" required placeholder="Ej: Colección Películas Acción 2024" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Categoría</label>
+                        <select id="disc-category" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                            <option value="Películas">Películas</option>
+                            <option value="Música">Música</option>
+                            <option value="Software">Software</option>
+                            <option value="Documentos">Documentos</option>
+                            <option value="Juegos">Juegos</option>
+                            <option value="Fotos">Fotos</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Formato Físico</label>
+                        <select id="disc-format" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                            <option value="DVD-R">DVD-R</option>
+                            <option value="DVD+R DL">DVD+R DL</option>
+                            <option value="CD-R">CD-R</option>
+                            <option value="BD-R">Blu-Ray (BD-R)</option>
+                            <option value="USB">Pendrive / USB</option>
+                            <option value="HDD">Disco Rígido Externo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label id="folder-picker-label" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Escanear Carpeta Local</label>
+                    <div class="relative border-2 border-dashed border-slate-800 hover:border-indigo-500/60 transition-colors rounded-2xl p-4 text-center cursor-pointer bg-slate-950/50">
+                        <input type="file" id="folder-picker" webkitdirectory directory multiple class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
+                        <i class="fa-solid fa-folder-open text-2xl text-indigo-400 mb-1"></i>
+                        <p class="text-xs text-slate-300 font-semibold" id="folder-status-text">Haz clic para escanear y agregar contenido</p>
+                        <p class="text-[10px] text-slate-500 mt-0.5" id="folder-sub-text">Se mapeará la estructura completa al disco</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Notas / Observaciones</label>
+                    <textarea id="disc-notes" rows="2" placeholder="Notas sobre el contenido..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+                </div>
+
+                <div class="pt-3 flex justify-end gap-3 border-t border-slate-800/80">
+                    <button type="button" id="cancel-disc-btn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors">Cancelar</button>
+                    <button type="submit" id="save-disc-submit-btn" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-600/30">Guardar Disco</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application Script Logic -->
+    <script>
+    let catalog = JSON.parse(localStorage.getItem('disc_catalog_pro') || '[]');
+    let activeDiscId = null;
+    let scannedStructure = null;
+    let isEditing = false;
+    let editingDiscId = null;
+
+    // Seed Sample Data
+    if (catalog.length === 0) {
+        catalog = [
+            {
+                id: 'disc-1',
+                fichero: 'FIC-01',
+                code: 'DVD-001',
+                title: 'Colección Cine Clásico & Demo',
+                category: 'Películas',
+                format: 'DVD-R',
+                notes: 'Disco de muestras multimedia',
+                date: new Date().toISOString(),
+                structure: {
+                    name: 'Raíz',
+                    type: 'folder',
+                    children: [
+                        {
+                            name: 'Videos',
+                            type: 'folder',
+                            children: [
+                                { name: 'Trailer_WebM_Demo.webm', type: 'file', size: '12.4 MB', ext: 'webm', url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm' },
+                                { name: 'Sample_MP4.mp4', type: 'file', size: '24.1 MB', ext: 'mp4', url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4' },
+                                { name: 'Pelicula_Antigua.avi', type: 'file', size: '700 MB', ext: 'avi' }
+                            ]
+                        },
+                        {
+                            name: 'Documentos',
+                            type: 'folder',
+                            children: [
+                                { name: 'Leeme.txt', type: 'file', size: '2 KB', ext: 'txt', content: 'Catalogador de Discos Pro v2.6\n--------------------------------\nLista de discos físicos archivados.' }
+                            ]
+                        },
+                        { name: 'caratula.jpg', type: 'file', size: '450 KB', ext: 'jpg', url: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=600&auto=format&fit=crop' }
+                    ]
+                }
+            }
+        ];
+        saveCatalog();
+    }
+
+    function saveCatalog() {
+        localStorage.setItem('disc_catalog_pro', JSON.stringify(catalog));
+    }
+
+    // DOM Bindings
+    const discListEl = document.getElementById('disc-list');
+    const treeContainer = document.getElementById('tree-container');
+    const previewBody = document.getElementById('preview-body');
+    const previewTitleBar = document.getElementById('preview-title-bar');
+    const previewTypeBadge = document.getElementById('preview-type-badge');
+    
+    const addDiscModal = document.getElementById('add-disc-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const addDiscBtn = document.getElementById('add-disc-btn');
+    const editDiscBtn = document.getElementById('edit-disc-btn');
+    const deleteDiscBtn = document.getElementById('delete-disc-btn');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const cancelDiscBtn = document.getElementById('cancel-disc-btn');
+    const addDiscForm = document.getElementById('add-disc-form');
+    const folderPicker = document.getElementById('folder-picker');
+    const folderStatusText = document.getElementById('folder-status-text');
+    const folderSubText = document.getElementById('folder-sub-text');
+    const saveDiscSubmitBtn = document.getElementById('save-disc-submit-btn');
+
+    const searchInput = document.getElementById('search-input');
+    const searchCountEl = document.getElementById('search-count');
+    const exportJsonBtn = document.getElementById('export-json');
+    const importJsonInput = document.getElementById('import-json');
+
+    // Search Filtering
+    searchInput.oninput = (e) => {
+        renderDiscList(e.target.value);
+    };
+
+    // Render Sidebar List
+    function renderDiscList(filter = '') {
+        discListEl.innerHTML = '';
+        const filtered = catalog.filter(d => 
+            (d.title || '').toLowerCase().includes(filter.toLowerCase()) ||
+            (d.code || '').toLowerCase().includes(filter.toLowerCase()) ||
+            (d.fichero || '').toLowerCase().includes(filter.toLowerCase()) ||
+            (d.category || '').toLowerCase().includes(filter.toLowerCase())
+        );
+
+        searchCountEl.textContent = `${filtered.length} Discos`;
+
+        if (filtered.length === 0) {
+            discListEl.innerHTML = `<div class="p-6 text-center text-xs text-slate-500 font-medium">Sin discos registrados</div>`;
+            return;
+        }
+
+        filtered.forEach(disc => {
+            const isActive = disc.id === activeDiscId;
+            const card = document.createElement('div');
+            card.className = `p-3 rounded-2xl border transition-all cursor-pointer ${
+                isActive 
+                    ? 'bg-indigo-600/15 border-indigo-500/50 text-white shadow-lg glow-indigo' 
+                    : 'bg-slate-900/40 border-slate-800/80 text-slate-300 hover:bg-slate-900/80 hover:border-slate-700'
+            }`;
+            
+            card.onclick = () => selectDisc(disc.id);
+
+            card.innerHTML = `
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-950 text-indigo-300 border border-slate-800 font-semibold">${disc.fichero || 'FIC-00'}</span>
+                        <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/20">${disc.code}</span>
+                    </div>
+                    <span class="text-[10px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800/50">${disc.category}</span>
+                </div>
+                <h4 class="text-xs font-bold truncate text-slate-100">${disc.title}</h4>
+                <div class="flex items-center justify-between mt-2 text-[10px] text-slate-400">
+                    <span><i class="fa-solid fa-compact-disc text-slate-500 mr-1"></i>${disc.format}</span>
+                    <span>${new Date(disc.date).toLocaleDateString()}</span>
+                </div>
+            `;
+            discListEl.appendChild(card);
+        });
+    }
+
+    // Select Disc View
+    function selectDisc(id) {
+        activeDiscId = id;
+        const disc = catalog.find(d => d.id === id);
+        renderDiscList(searchInput.value);
+
+        if (!disc) return;
+
+        document.getElementById('disc-detail-header').classList.remove('hidden');
+        document.getElementById('view-fichero').textContent = disc.fichero || 'FIC-00';
+        document.getElementById('view-code').textContent = disc.code;
+        document.getElementById('view-title').textContent = disc.title;
+        document.getElementById('view-meta').textContent = `${disc.category} • ${disc.format} • Registrado: ${new Date(disc.date).toLocaleDateString()} ${disc.notes ? '• ' + disc.notes : ''}`;
+
+        renderTree(disc.structure);
+        resetPreview();
+    }
+
+    // Edit Active Disc Modal Opener
+    editDiscBtn.onclick = () => {
+        if (!activeDiscId) return;
+        const disc = catalog.find(d => d.id === activeDiscId);
+        if (!disc) return;
+
+        isEditing = true;
+        editingDiscId = activeDiscId;
+        scannedStructure = null;
+
+        modalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-indigo-400"></i> Editar Disco`;
+        document.getElementById('disc-fichero').value = disc.fichero || '';
+        document.getElementById('disc-code').value = disc.code || '';
+        document.getElementById('disc-title').value = disc.title || '';
+        document.getElementById('disc-category').value = disc.category || 'Películas';
+        document.getElementById('disc-format').value = disc.format || 'DVD-R';
+        document.getElementById('disc-notes').value = disc.notes || '';
+
+        folderStatusText.textContent = 'Haz clic para escanear y agregar más contenido';
+        folderSubText.textContent = 'El contenido nuevo se agregará a los archivos existentes';
+        saveDiscSubmitBtn.textContent = 'Guardar Cambios';
+
+        addDiscModal.classList.remove('hidden');
+    };
+
+    // Delete Active Disc
+    deleteDiscBtn.onclick = () => {
+        if (!activeDiscId) return;
+        const disc = catalog.find(d => d.id === activeDiscId);
+        if (confirm(`¿Deseas eliminar "${disc.title}" del catálogo?`)) {
+            catalog = catalog.filter(d => d.id !== activeDiscId);
+            saveCatalog();
+            activeDiscId = null;
+            document.getElementById('disc-detail-header').classList.add('hidden');
+            treeContainer.innerHTML = `
+                <div class="h-full flex flex-col items-center justify-center text-slate-500 space-y-2">
+                    <i class="fa-solid fa-folder-open text-3xl text-slate-700"></i>
+                    <p class="text-xs font-sans">Selecciona un disco de la lista lateral</p>
+                </div>`;
+            resetPreview();
+            renderDiscList(searchInput.value);
+        }
+    };
+
+    // Render File Structure Tree
+    function renderTree(node) {
+        treeContainer.innerHTML = '';
+        let totalItems = 0;
+
+        function countItems(n) {
+            if (n && n.children) {
+                n.children.forEach(c => {
+                    totalItems++;
+                    countItems(c);
+                });
+            }
+        }
+        if (node) countItems(node);
+        document.getElementById('file-count-badge').textContent = `${totalItems} elementos`;
+
+        function buildTreeDOM(item, container, level = 0) {
+            if (!item) return;
+
+            const row = document.createElement('div');
+            row.className = `flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-slate-800/60 cursor-pointer select-none text-xs text-slate-300 transition-colors`;
+            row.style.paddingLeft = `${level * 14 + 8}px`;
+
+            const isFolder = item.type === 'folder';
+            let iconClass = 'fa-regular fa-file text-slate-500';
+
+            if (isFolder) {
+                iconClass = 'fa-solid fa-folder text-amber-400';
+            } else {
+                const ext = (item.ext || '').toLowerCase();
+                if (['mp4', 'webm', 'mkv', 'avi', 'mov', 'wmv', 'mpg'].includes(ext)) iconClass = 'fa-solid fa-file-video text-indigo-400';
+                else if (['mp3', 'wav', 'flac', 'aac'].includes(ext)) iconClass = 'fa-solid fa-file-audio text-emerald-400';
+                else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) iconClass = 'fa-solid fa-file-image text-purple-400';
+                else if (['pdf', 'txt', 'doc', 'docx'].includes(ext)) iconClass = 'fa-solid fa-file-lines text-blue-400';
+                else if (['zip', 'rar', '7z', 'iso'].includes(ext)) iconClass = 'fa-solid fa-file-zipper text-rose-400';
+            }
+
+            row.innerHTML = `
+                <i class="${iconClass}"></i>
+                <span class="truncate flex-1 font-sans text-xs">${item.name}</span>
+                ${item.size ? `<span class="text-[10px] text-slate-500 font-mono">${item.size}</span>` : ''}
+            `;
+
+            const childrenContainer = document.createElement('div');
+            childrenContainer.className = 'hidden';
+
+            if (isFolder) {
+                let isOpen = false;
+                row.onclick = (e) => {
+                    e.stopPropagation();
+                    isOpen = !isOpen;
+                    childrenContainer.classList.toggle('hidden', !isOpen);
+                    const icon = row.querySelector('.fa-folder, .fa-folder-open');
+                    if (icon) {
+                        icon.className = isOpen ? 'fa-solid fa-folder-open text-amber-400' : 'fa-solid fa-folder text-amber-400';
+                    }
+                };
+            } else {
+                row.onclick = (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('#tree-container .bg-indigo-600\\/20').forEach(el => el.classList.remove('bg-indigo-600/20', 'text-indigo-300'));
+                    row.classList.add('bg-indigo-600/20', 'text-indigo-300');
+                    previewFile(item);
+                };
+            }
+
+            container.appendChild(row);
+
+            if (isFolder && item.children) {
+                item.children.forEach(child => buildTreeDOM(child, childrenContainer, level + 1));
+                container.appendChild(childrenContainer);
+            }
+        }
+
+        if (node && node.children && node.children.length > 0) {
+            node.children.forEach(child => buildTreeDOM(child, treeContainer, 0));
+        } else {
+            treeContainer.innerHTML = `<div class="p-4 text-center text-xs text-slate-500">Carpeta o disco vacío</div>`;
+        }
+    }
+
+    // Preview File Handling
+    function previewFile(file) {
+        previewTitleBar.innerHTML = `<i class="fa-solid fa-eye text-indigo-400"></i> ${file.name}`;
+        previewTypeBadge.textContent = (file.ext || 'FILE').toUpperCase();
+        previewTypeBadge.classList.remove('hidden');
+
+        const ext = (file.ext || '').toLowerCase();
+
+        // Video format handling
+        if (['mp4', 'webm', 'ogg', 'mkv', 'avi', 'mov', 'wmv', 'mpg'].includes(ext)) {
+            if (file.fileObject || file.url) {
+                const videoSrc = file.fileObject ? URL.createObjectURL(file.fileObject) : file.url;
+                previewBody.innerHTML = `
+                    <div class="w-full h-full flex flex-col items-center justify-center p-2">
+                        <video controls class="w-full max-h-[380px] rounded-xl bg-black shadow-2xl border border-slate-800" src="${videoSrc}">
+                            Tu navegador no soporta reproducción directa.
+                        </video>
+                        <p class="text-[11px] text-slate-400 mt-3 font-medium flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-check text-emerald-400"></i> Reproductor HTML5 Activo (${ext.toUpperCase()})
+                        </p>
+                    </div>
+                `;
+            } else {
+                previewBody.innerHTML = `
+                    <div class="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center space-y-4 shadow-xl">
+                        <div class="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto text-indigo-400 shadow-inner">
+                            <i class="fa-solid fa-film text-3xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-100 truncate">${file.name}</h4>
+                            <p class="text-xs text-slate-400 mt-1">Formato: <span class="uppercase font-mono text-indigo-300 font-semibold">${ext}</span> ${file.size ? '• ' + file.size : ''}</p>
+                        </div>
+                        <div class="bg-slate-950 rounded-xl p-3 border border-slate-800 text-left text-xs space-y-1.5 text-slate-400 font-mono">
+                            <div class="flex justify-between"><span>Estado:</span> <span class="text-emerald-400">Catalogado</span></div>
+                            <div class="flex justify-between"><span>Tipo:</span> <span>Archivo Multimedia</span></div>
+                            <div class="flex justify-between"><span>Ubicación:</span> <span class="truncate ml-2 text-slate-300">Disco Físico</span></div>
+                        </div>
+                    </div>
+                `;
+            }
+            return;
+        }
+
+        // Image Preview
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+            const imgSrc = file.fileObject ? URL.createObjectURL(file.fileObject) : (file.url || 'https://placehold.co/600x400/1e293b/818cf8?text=Imagen+Catalogada');
+            previewBody.innerHTML = `
+                <div class="w-full h-full flex items-center justify-center p-2">
+                    <img src="${imgSrc}" class="max-w-full max-h-[400px] object-contain rounded-xl border border-slate-800 shadow-xl">
+                </div>
+            `;
+            return;
+        }
+
+        // Text File Preview
+        if (['txt', 'log', 'md', 'json', 'csv'].includes(ext)) {
+            if (file.fileObject) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    previewBody.innerHTML = `<pre class="w-full h-full p-4 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 overflow-auto whitespace-pre-wrap">${escapeHtml(e.target.result)}</pre>`;
+                };
+                reader.readAsText(file.fileObject);
+            } else {
+                previewBody.innerHTML = `<pre class="w-full h-full p-4 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 overflow-auto whitespace-pre-wrap">${escapeHtml(file.content || 'Vista previa no disponible para texto de muestra.')}</pre>`;
+            }
+            return;
+        }
+
+        // Fallback Card
+        previewBody.innerHTML = `
+            <div class="w-full max-w-xs bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center space-y-3 shadow-xl">
+                <i class="fa-solid fa-file-code text-4xl text-slate-600"></i>
+                <div>
+                    <h4 class="text-xs font-bold text-slate-200 truncate">${file.name}</h4>
+                    <p class="text-[11px] text-slate-400 mt-1">Tamaño: ${file.size || 'Desconocido'}</p>
+                </div>
+                <span class="inline-block px-3 py-1 bg-slate-950 text-slate-400 text-[10px] font-mono rounded-full border border-slate-800">Archivo Registrado</span>
+            </div>
+        `;
+    }
+
+    function resetPreview() {
+        previewTitleBar.innerHTML = `<i class="fa-solid fa-eye text-indigo-400"></i> Previsualizador`;
+        previewTypeBadge.classList.add('hidden');
+        previewBody.innerHTML = `
+            <div class="text-center space-y-3 text-slate-500">
+                <div class="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-slate-700">
+                    <i class="fa-regular fa-file-video text-3xl"></i>
+                </div>
+                <p class="text-xs font-sans">Selecciona un archivo para previsualizar</p>
+            </div>
+        `;
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // Open Modal for New Disc
+    addDiscBtn.onclick = () => {
+        isEditing = false;
+        editingDiscId = null;
+        scannedStructure = null;
+
+        modalTitle.innerHTML = `<i class="fa-solid fa-compact-disc text-indigo-400"></i> Registrar Nuevo Disco`;
+        folderStatusText.textContent = 'Haz clic para escanear y agregar contenido';
+        folderSubText.textContent = 'Se mapeará la estructura completa de la carpeta';
+        saveDiscSubmitBtn.textContent = 'Guardar Disco';
+
+        addDiscForm.reset();
+        addDiscModal.classList.remove('hidden');
+    };
+
+    closeModalBtn.onclick = () => addDiscModal.classList.add('hidden');
+    cancelDiscBtn.onclick = () => addDiscModal.classList.add('hidden');
+
+    // Folder Scanner & Hierarchy Construction
+    folderPicker.onchange = (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        folderStatusText.textContent = `Escaneados ${files.length} archivos con éxito`;
+
+        const root = { name: 'Raíz', type: 'folder', children: [] };
+
+        files.forEach(file => {
+            const parts = file.webkitRelativePath.split('/');
+            let current = root;
+
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                const isFile = i === parts.length - 1;
+
+                if (isFile) {
+                    const ext = part.split('.').pop();
+                    current.children.push({
+                        name: part,
+                        type: 'file',
+                        size: formatBytes(file.size),
+                        ext: ext,
+                        fileObject: file
+                    });
+                } else {
+                    let folder = current.children.find(c => c.type === 'folder' && c.name === part);
+                    if (!folder) {
+                        folder = { name: part, type: 'folder', children: [] };
+                        current.children.push(folder);
+                    }
+                    current = folder;
+                }
+            }
+        });
+
+        scannedStructure = root;
+    };
+
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    // Merge Scanned Folder Structure into Existing Structure
+    function mergeStructures(existing, incoming) {
+        if (!existing) return incoming;
+        if (!incoming || !incoming.children) return existing;
+
+        incoming.children.forEach(inChild => {
+            if (inChild.type === 'file') {
+                const exists = existing.children.some(c => c.name === inChild.name && c.type === 'file');
+                if (!exists) {
+                    existing.children.push(inChild);
+                }
+            } else if (inChild.type === 'folder') {
+                let exFolder = existing.children.find(c => c.name === inChild.name && c.type === 'folder');
+                if (!exFolder) {
+                    existing.children.push(inChild);
+                } else {
+                    mergeStructures(exFolder, inChild);
+                }
+            }
+        });
+
+        return existing;
+    }
+
+    // Submit Form Handler (Handles both Create & Edit Mode)
+    addDiscForm.onsubmit = (e) => {
+        e.preventDefault();
+
+        const ficheroVal = document.getElementById('disc-fichero').value.trim();
+        const codeVal = document.getElementById('disc-code').value.trim();
+        const titleVal = document.getElementById('disc-title').value.trim();
+        const categoryVal = document.getElementById('disc-category').value;
+        const formatVal = document.getElementById('disc-format').value;
+        const notesVal = document.getElementById('disc-notes').value.trim();
+
+        if (isEditing && editingDiscId) {
+            // Edit existing disc
+            const discIndex = catalog.findIndex(d => d.id === editingDiscId);
+            if (discIndex !== -1) {
+                catalog[discIndex].fichero = ficheroVal;
+                catalog[discIndex].code = codeVal;
+                catalog[discIndex].title = titleVal;
+                catalog[discIndex].category = categoryVal;
+                catalog[discIndex].format = formatVal;
+                catalog[discIndex].notes = notesVal;
+
+                if (scannedStructure) {
+                    catalog[discIndex].structure = mergeStructures(catalog[discIndex].structure, scannedStructure);
+                }
+
+                saveCatalog();
+                selectDisc(editingDiscId);
+            }
+        } else {
+            // Create new disc
+            const newDisc = {
+                id: 'disc-' + Date.now(),
+                fichero: ficheroVal,
+                code: codeVal,
+                title: titleVal,
+                category: categoryVal,
+                format: formatVal,
+                notes: notesVal,
+                date: new Date().toISOString(),
+                structure: scannedStructure || { name: 'Raíz', type: 'folder', children: [] }
+            };
+
+            catalog.unshift(newDisc);
+            saveCatalog();
+            selectDisc(newDisc.id);
+        }
+
+        addDiscModal.classList.add('hidden');
+    };
+
+    // Backup Export JSON
+    exportJsonBtn.onclick = () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(catalog, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `catalogo_discos_backup_${new Date().toISOString().slice(0,10)}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    };
+
+    // Backup Import JSON
+    importJsonInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const imported = JSON.parse(event.target.result);
+                if (Array.isArray(imported)) {
+                    catalog = imported;
+                    saveCatalog();
+                    renderDiscList();
+                    if (catalog.length > 0) selectDisc(catalog[0].id);
+                }
+            } catch (err) {
+                console.error("Error al importar archivo JSON", err);
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    // Initial Render
+    renderDiscList();
+    if (catalog.length > 0) {
+        selectDisc(catalog[0].id);
+    }
+    </script>
+</body>
+</html>
